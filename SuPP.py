@@ -111,13 +111,68 @@ class SuPP:
             Cost = (1-J/self.opts['epsilon'])**2
         return Cost
     def projectVect(self,X,g):
-        N = self.opts['N']
+        N = X.shape[0]
         T = np.repeat([g],N,0)
         return np.nansum(X*T,1)/np.linalg.norm(g)**2
-    def getScores(self,X):
-        Scores = np.dot(np.dot(X,np.transpose(self.g)),np.linalg.pinv(np.dot(self.g,np.transpose(self.g))))
-        self.Scores = Scores
-        return Scores
+    def getScores(self,X,g = None):
+        if g is None:
+            g = self.g
+        n = X.shape[0]
+        k = g.shape[0]
+        Scores = []
+        for i in range(k):
+            Scores.append(self.projectVect(X,g[i,:]))
+        if g is None:
+            self.scores = np.array(Scores).T
+        return np.array(Scores).T
+    def gramSchmidt(self,g, row_vecs=True, norm = True):
+        if not row_vecs:
+            g = g.T
+        y = g[0,:].copy()
+        for i in range(1, g.shape[0]):
+            proj = np.diag((g[i,:].dot(y.T)/np.linalg.norm(y,axis=1)**2).flat).dot(y)
+            y = np.vstack((y, g[i,:] - proj.sum(0)))
+        if norm:
+            y = np.diag(1/np.linalg.norm(y,axis=1)).dot(y)
+        if row_vecs:
+            return y
+        else:
+            return y.T
+    def relativeGroupDist(self,Y,X=None):
+        if self.scores is None and X is not None:
+            Scores = self.getScores(X)            
+        elif self.scores is None and X is None:
+            print("Error! the Scores are not set and the data was not passed.\nPlease Specify the data X or calculate the scores first using getScores(Data) method")            
+        elif X is not None and self.Scores is not None:
+            print("Warning! Data was passed with the previously calculated attribute Scores!\nRecalculating Scores")
+            Scores = self.getScores(X)
+        else:
+            Scores = self.scores
+        RelGD = []
+        for i in range(Scores.shape[1]):
+            Quant = []
+            D = 0            
+            for c in range(self.opts['nr_classes']):                
+                Quant.append({'5p':np.nanquantile(Scores[Y == self.opts['un_classes'][c],i],0.05),
+                              '50p':np.nanquantile(Scores[Y == self.opts['un_classes'][c],i],0.5),
+                              '95p':np.nanquantile(Scores[Y == self.opts['un_classes'][c],i],0.95)})
+            MinEntry = min(Quant,key = lambda x: x['5p'])
+            MaxEntry = max(Quant,key = lambda x: x['5p'])
+            for item in Quant:
+                if item == MinEntry:
+                    D += np.abs(item['95p'] - item['50p'])
+                elif item == MaxEntry:
+                    D += np.abs(item['50p'] - item['5p'])
+                else:
+                    D += np.abs(item['95p'] - item['5p'])
+            RelGD.append((MaxEntry['50p']-MinEntry['50p'])/D)
+        return RelGD
+                        
+            
+            
+            
+            
+        
     
            
     
