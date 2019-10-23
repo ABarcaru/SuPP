@@ -100,12 +100,6 @@ class SuPP:
             u = np.ones([D,D],dtype=bool)
             e = np.eye(D,dtype=bool)            
             O = (2/(D*(D-1)))*np.sum(np.abs(np.dot(k[0:D,:],k[0:D,:].T)[np.triu((u!=e))]))
-#            O2 = 0
-#            i = 0
-#            while i < n:
-#                O += np.abs(np.sum(k[i,:]*k[i+1]))
-#                i += 1
-#            O = (2/(D*(D-1)))*O
             Cost = (1-J/self.opts['epsilon'])**2 + self.opts['orth_weight']*O**2#  
         else:
             Cost = (1-J/self.opts['epsilon'])**2
@@ -128,7 +122,7 @@ class SuPP:
     def gramSchmidt(self,g, row_vecs=True, norm = True):
         if not row_vecs:
             g = g.T
-        y = g[0,:].copy()
+        y = g[0:1,:].copy()
         for i in range(1, g.shape[0]):
             proj = np.diag((g[i,:].dot(y.T)/np.linalg.norm(y,axis=1)**2).flat).dot(y)
             y = np.vstack((y, g[i,:] - proj.sum(0)))
